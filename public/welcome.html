@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>面试Go - AI实时面试助手</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1117;
+        --panel: #161b22;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --brand: #58a6ff;
+        --line: rgba(255,255,255,0.1);
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { background: var(--bg); color: var(--text); min-height: 100vh; display: grid; place-items: center; }
+      .hero { text-align: center; max-width: 640px; padding: 40px 24px; }
+      h1 { font-size: 48px; margin-bottom: 12px; }
+      h2 { font-size: 20px; color: var(--muted); font-weight: 400; margin-bottom: 32px; }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 28px; text-align: left; margin-bottom: 20px; }
+      .card h3 { font-size: 17px; margin-bottom: 12px; }
+      .card p, .card li { color: var(--muted); font-size: 14px; line-height: 1.7; }
+      .card ol { padding-left: 20px; }
+      .card code { background: rgba(88,166,255,0.15); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+      .btn { display: inline-block; padding: 14px 36px; background: var(--brand); color: #fff; border: none; border-radius: 8px; font-size: 17px; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.15s; }
+      .btn:hover { background: #4090e0; }
+      .badge { display: inline-block; padding: 4px 10px; background: rgba(255,123,114,0.15); color: #ff7b72; border-radius: 4px; font-size: 12px; margin-left: 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="hero">
+      <h1>🎙️ 面试Go</h1>
+      <h2>AI 实时面试助手 · 中英文双语字幕 · DeepSeek 智能答题</h2>
+
+      <div class="card">
+        <h3>🚀 快速开始</h3>
+        <ol>
+          <li>点击下方按钮进入面试页面</li>
+          <li>选择一个音频输入设备</li>
+          <li>点击「开始监听」</li>
+          <li>说话即可看到实时字幕和 AI 回答建议</li>
+        </ol>
+        <br>
+        <a href="/index.html" class="btn">进入面试助手 →</a>
+      </div>
+
+      <div class="card">
+        <h3>🎤 麦克风不工作？<span class="badge">重要</span></h3>
+        <p>浏览器安全策略要求 HTTPS 才能使用麦克风。如果点击「开始监听」后没反应：</p>
+        <ol style="margin-top:8px">
+          <li>Chrome 地址栏输入 <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code></li>
+          <li>在输入框填入 <code>http://43.156.225.212:3210</code></li>
+          <li>改为 <strong>Enabled</strong> → 点底部的 <strong>Relaunch</strong> 重启浏览器</li>
+          <li>或者 <strong>用桌面版</strong>（下载 .exe / .app），完全不受限制</li>
+        </ol>
+      </div>
+
+      <p style="color:var(--muted);font-size:13px;margin-top:24px">
+        🖥️ 桌面版下载：<a href="https://github.com/Han-jeffery/Interview-Captions" style="color:var(--brand)">GitHub</a> |
+        ⚡ 语音：Deepgram |
+        🧠 AI：DeepSeek
+      </p>
+    </div>
+  </body>
+</html>

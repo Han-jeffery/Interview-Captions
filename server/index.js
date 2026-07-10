@@ -27,6 +27,7 @@ const PYTHON_BIN = process.env.PYTHON_BIN || "python3";
 
 const app = express();
 app.use(express.json({ limit: "40mb" }));
+app.get("/", (_req, res) => res.sendFile(path.join(publicDir, "welcome.html")));
 app.use(express.static(publicDir));
 app.get("/health", (_req, res) => {
   res.json({
