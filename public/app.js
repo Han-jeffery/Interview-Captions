@@ -3,6 +3,7 @@ const languageSelect = document.querySelector("#languageSelect");
 const refreshBtn = document.querySelector("#refreshBtn");
 const startBtn = document.querySelector("#startBtn");
 const stopBtn = document.querySelector("#stopBtn");
+const generateBtn = document.querySelector("#generateBtn");
 const clearTranscriptBtn = document.querySelector("#clearTranscriptBtn");
 const clearAnswerBtn = document.querySelector("#clearAnswerBtn");
 const statusEl = document.querySelector("#status");
@@ -210,6 +211,12 @@ refreshBtn.addEventListener("click", () => {
 
 startBtn.addEventListener("click", startListening);
 stopBtn.addEventListener("click", stopListening);
+generateBtn?.addEventListener("click", () => {
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "generate_answer" }));
+    setStatus("正在生成回答...");
+  }
+});
 clearTranscriptBtn.addEventListener("click", () => {
   partialEl.textContent = "";
   transcriptEl.textContent = "";

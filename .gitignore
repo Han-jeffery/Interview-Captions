@@ -7,3 +7,4 @@ dist/
 *.dmg
 *.exe
 HML-SSH密钥.pem
+ssl/
