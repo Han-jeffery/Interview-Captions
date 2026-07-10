@@ -102,6 +102,35 @@ app.post("/api/profile/clear", (_req, res) => {
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
 
+// 同时启动 HTTPS（浏览器麦克风需要 HTTPS，Electron 桌面版用 HTTP 本地连接）
+const SSL_DIR = path.join(rootDir, "ssl");
+const SSL_KEY = path.join(SSL_DIR, "selfsigned.key");
+const SSL_CERT = path.join(SSL_DIR, "selfsigned.crt");
+
+try {
+  if (!fs.existsSync(SSL_KEY)) {
+    fs.mkdirSync(SSL_DIR, { recursive: true });
+    spawnSync("openssl", [
+      "req", "-x509", "-newkey", "rsa:2048",
+      "-keyout", SSL_KEY, "-out", SSL_CERT,
+      "-days", "365", "-nodes",
+      "-subj", "/CN=InterviewGo"
+    ], { stdio: "pipe" });
+    console.log("Generated self-signed SSL certificate");
+  }
+  const ssl = { key: fs.readFileSync(SSL_KEY), cert: fs.readFileSync(SSL_CERT) };
+  const httpsServer = https.createServer(ssl, app);
+  const wssHttps = new WebSocketServer({ server: httpsServer, path: "/ws" });
+  wssHttps.on("connection", handleConnection);
+  const HTTPS_PORT = Number(process.env.HTTPS_PORT || 3443);
+  httpsServer.listen(HTTPS_PORT, () => {
+    console.log(`HTTPS at https://localhost:${HTTPS_PORT} (browser microphone support)`);
+  });
+  httpsServer.on("error", () => {}); // 静默处理端口冲突
+} catch (err) {
+  console.warn("HTTPS optional (browser may block microphone on HTTP):", err.message);
+}
+
 function readContextFile(fileName) {
   try {
     return fs.readFileSync(path.join(dataDir, fileName), "utf8").trim();
@@ -869,57 +898,6 @@ const handleConnection = (clientWs) => {
 wss.on("connection", handleConnection);
 
 server.listen(PORT, () => {
-  console.log(`Interview copilot running at http://localhost:${PORT}`);
+  console.log(`InterviewGo running at http://localhost:${PORT}`);
+  console.log(`  (桌面版 Electron 用 http://localhost:${PORT}/overlay.html)`);
 });
-
-// ---- HTTPS 支持 (浏览器需要 HTTPS 才能用麦克风) ----
-const SSL_DIR = path.join(rootDir, "ssl");
-const SSL_KEY = path.join(SSL_DIR, "selfsigned.key");
-const SSL_CERT = path.join(SSL_DIR, "selfsigned.crt");
-
-function ensureSelfSignedCert() {
-  if (fs.existsSync(SSL_KEY) && fs.existsSync(SSL_CERT)) {
-    return { key: fs.readFileSync(SSL_KEY), cert: fs.readFileSync(SSL_CERT) };
-  }
-  fs.mkdirSync(SSL_DIR, { recursive: true });
-  const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
-    modulusLength: 2048,
-    publicKeyEncoding: { type: "spki", format: "pem" },
-    privateKeyEncoding: { type: "pkcs8", format: "pem" }
-  });
-  // 用 Node.js 内置方法生成自签名证书
-  const x509 = new crypto.X509Certificate({
-    subject: { commonName: "InterviewGo" },
-    issuer: { commonName: "InterviewGo" },
-    publicKey,
-    privateKey,
-    validFrom: new Date().toISOString(),
-    validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-    extensions: [
-      { name: "subjectAltName", value: "DNS:localhost,IP:127.0.0.1" },
-      { name: "basicConstraints", value: "CA:FALSE" }
-    ]
-  });
-  const certPem = x509.toString();
-  fs.writeFileSync(SSL_KEY, privateKey);
-  fs.writeFileSync(SSL_CERT, certPem);
-  console.log("Generated self-signed SSL certificate (valid 1 year)");
-  return { key: privateKey, cert: certPem };
-}
-
-try {
-  const ssl = ensureSelfSignedCert();
-  const httpsServer = https.createServer({ key: ssl.key, cert: ssl.cert }, app);
-  const wssHttps = new WebSocketServer({ server: httpsServer, path: "/ws" });
-
-  // 使用共享的连接处理器
-  wssHttps.on("connection", handleConnection);
-
-  const HTTPS_PORT = Number(process.env.HTTPS_PORT || 3443);
-  httpsServer.listen(HTTPS_PORT, () => {
-    console.log(`HTTPS available at https://localhost:${HTTPS_PORT}`);
-    console.log(`  (accept self-signed certificate for microphone access)`);
-  });
-} catch (err) {
-  console.warn("HTTPS setup skipped (microphone may not work over HTTP):", err.message);
-}
