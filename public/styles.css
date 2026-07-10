@@ -65,6 +65,11 @@ h1 {
   white-space: nowrap;
 }
 
+.header-btn {
+  margin-left: auto;
+  margin-right: 8px;
+}
+
 .status.error {
   color: var(--danger);
   border-color: rgba(255,123,114,0.4);

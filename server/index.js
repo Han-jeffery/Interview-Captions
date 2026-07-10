@@ -548,7 +548,7 @@ async function askDeepSeek(question, clientWs) {
   }
 
   const finalText = fullText.trim();
-  sendJson(clientWs, { type: "answer_done", text: finalText });
+  sendJson(clientWs, { type: "answer", text: finalText });
 }
 
 function handleConnection(clientWs) {
