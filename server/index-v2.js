@@ -602,7 +602,7 @@ async function translateText(text, id, clientWs) {
   }
 }
 
-async function askDeepSeek(question, clientWs) {
+async function askDeepSeek(question, clientWs, material) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     sendJson(clientWs, {
@@ -623,7 +623,7 @@ async function askDeepSeek(question, clientWs) {
     },
     body: JSON.stringify({
       model: process.env.DEEPSEEK_MODEL || "deepseek-v4-flash",
-      messages: buildPrompt(question, userMaterial),
+      messages: buildPrompt(question, material),
       temperature: 0,
       max_tokens: 650,
       stream: true
@@ -710,7 +710,7 @@ function handleConnection(clientWs) {
     asking = true;
     lastAnswerAt = now;
     try {
-      await askDeepSeek(normalized, clientWs);
+      await askDeepSeek(normalized, clientWs, userMaterial);
     } catch (error) {
       sendJson(clientWs, { type: "error", message: error.message });
     } finally {
