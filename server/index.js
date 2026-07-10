@@ -551,7 +551,7 @@ async function askDeepSeek(question, clientWs) {
   sendJson(clientWs, { type: "answer_done", text: finalText });
 }
 
-const handleConnection = (clientWs) => {
+function handleConnection(clientWs) {
   // Dual Deepgram connections for Chinese-English bilingual support
   const asrConns = Object.create(null);
   let finalBuffer = "";
@@ -894,7 +894,7 @@ const handleConnection = (clientWs) => {
     type: "status",
     message: `Local client connected (${APP_VERSION}). Choose an audio input and start listening.`
   });
-};
+}
 
 wss.on("connection", handleConnection);
 

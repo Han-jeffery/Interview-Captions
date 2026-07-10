@@ -89,6 +89,7 @@
     if (!saved) { window.location.href = "/activate.html"; return; }
     try {
       const data = JSON.parse(saved);
+      if (!data.token) { localStorage.removeItem("itcview_activation"); window.location.href = "/activate.html"; return; }
       fetch("/api/verify-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,8 +99,10 @@
           localStorage.removeItem("itcview_activation");
           window.location.href = "/activate.html";
         }
-      }).catch(() => {});
-    } catch { window.location.href = "/activate.html"; }
+      }).catch(() => {
+        // 网络错误也放行，避免误拦
+      });
+    } catch { localStorage.removeItem("itcview_activation"); window.location.href = "/activate.html"; }
   })();
 </script>
 <script src="/app.js" type="module"></script>

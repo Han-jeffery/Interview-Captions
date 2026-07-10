@@ -245,7 +245,7 @@ try {
   const httpsServer = https.createServer(ssl, app);
   const wssHttps = new WebSocketServer({ server: httpsServer, path: "/ws" });
   wssHttps.on("connection", handleConnection);
-  const HTTPS_PORT = Number(process.env.HTTPS_PORT || 3443);
+  const HTTPS_PORT = Number(process.env.HTTPS_PORT || 3444);
   httpsServer.listen(HTTPS_PORT, () => {
     console.log(`HTTPS at https://localhost:${HTTPS_PORT} (browser microphone support)`);
   });
@@ -673,7 +673,7 @@ async function askDeepSeek(question, clientWs) {
   sendJson(clientWs, { type: "answer_done", text: finalText });
 }
 
-const handleConnection = (clientWs) => {
+function handleConnection(clientWs) {
   // Dual Deepgram connections for Chinese-English bilingual support
   const asrConns = Object.create(null);
   let finalBuffer = "";
@@ -1026,7 +1026,7 @@ const handleConnection = (clientWs) => {
     type: "status",
     message: `Local client connected (${APP_VERSION}). Choose an audio input and start listening.`
   });
-};
+}
 
 wss.on("connection", handleConnection);
 
