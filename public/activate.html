@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ITC-View</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1117; --panel: #161b22; --text: #e6edf3; --muted: #8b949e;
+        --brand: #58a6ff; --line: rgba(255,255,255,0.1); --danger: #ff7b72;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { background: var(--bg); color: var(--text); min-height: 100vh; display: grid; place-items: center; }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 40px 32px; max-width: 420px; width: 90%; text-align: center; }
+      h1 { font-size: 32px; margin-bottom: 8px; }
+      p { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+      input { width: 100%; padding: 12px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font-size: 18px; text-align: center; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; outline: none; }
+      input:focus { border-color: var(--brand); }
+      button { width: 100%; padding: 12px; background: var(--brand); color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+      button:hover { opacity: 0.9; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .error { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 20px; }
+      .info { background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.2); border-radius: 8px; padding: 12px; margin-top: 16px; font-size: 13px; color: var(--brand); }
+      .hidden { display: none; }
+      .price { font-size: 20px; font-weight: 700; color: #ffd666; margin-bottom: 16px; }
+    </style>
+  </head>
+  <body>
+    <div class="card" id="activateCard">
+      <h1>ITC-View</h1>
+      <p>AI 实时面试助手 · 中英文双语字幕</p>
+      <div class="price">¥11.9 / 30天</div>
+      <input type="text" id="codeInput" placeholder="输入激活码" maxlength="19" autocomplete="off" />
+      <button id="activateBtn" onclick="doActivate()">激活使用</button>
+      <div class="error" id="errorMsg"></div>
+      <div class="info" id="statusInfo" style="display:none"></div>
+      <p style="margin-top:20px;font-size:12px;color:var(--muted)">
+        购买激活码请联系客服<br>激活后可在任意设备使用
+      </p>
+    </div>
+
+    <script>
+      const STORAGE_KEY = "itcview_activation";
+
+      // 检查是否已激活
+      (function check() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return;
+        try {
+          const data = JSON.parse(saved);
+          fetch("/api/verify-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: data.token })
+          }).then(r => r.json()).then(res => {
+            if (res.ok) {
+              window.location.href = "/index.html";
+            } else {
+              localStorage.removeItem(STORAGE_KEY);
+              if (res.expired) {
+                document.getElementById("errorMsg").textContent = "激活码已过期，请重新购买";
+              }
+            }
+          }).catch(() => {});
+        } catch {}
+      })();
+
+      async function doActivate() {
+        const code = document.getElementById("codeInput").value.trim();
+        const btn = document.getElementById("activateBtn");
+        const err = document.getElementById("errorMsg");
+
+        if (!code) { err.textContent = "请输入激活码"; return; }
+
+        btn.disabled = true;
+        btn.textContent = "验证中...";
+        err.textContent = "";
+
+        try {
+          const res = await fetch("/api/activate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: data.token, expiresAt: data.expiresAt }));
+            window.location.href = "/index.html";
+          } else {
+            err.textContent = data.error || "激活失败";
+          }
+        } catch {
+          err.textContent = "网络错误，请重试";
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "激活使用";
+        }
+      }
+
+      document.getElementById("codeInput").addEventListener("keydown", e => {
+        if (e.key === "Enter") doActivate();
+      });
+    </script>
+  </body>
+</html>

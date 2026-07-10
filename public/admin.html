@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ITC-View 管理后台</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1117; --panel: #161b22; --text: #e6edf3; --muted: #8b949e;
+        --brand: #58a6ff; --line: rgba(255,255,255,0.1); --danger: #ff7b72; --green: #3fb950;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { background: var(--bg); color: var(--text); padding: 24px; }
+      .container { max-width: 900px; margin: 0 auto; }
+      h1 { margin-bottom: 4px; }
+      .sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+      .card h2 { font-size: 17px; margin-bottom: 14px; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      input, button { padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+      input { background: var(--bg); border: 1px solid var(--line); color: var(--text); flex: 1; min-width: 180px; outline: none; }
+      input:focus { border-color: var(--brand); }
+      button { background: var(--brand); color: #fff; border: none; cursor: pointer; font-weight: 600; white-space: nowrap; }
+      button:hover { opacity: 0.85; }
+      button.danger { background: var(--danger); }
+      .codes { margin-top: 16px; }
+      .code-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; align-items: center; }
+      .code-row.header { color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--line); }
+      .code-val { font-family: monospace; font-size: 14px; letter-spacing: 1px; color: #ffd666; }
+      .status-active { color: var(--green); }
+      .status-expired { color: var(--danger); }
+      .status-unused { color: var(--muted); }
+      .msg { font-size: 13px; margin-top: 10px; min-height: 20px; }
+      .msg.error { color: var(--danger); }
+      .msg.ok { color: var(--green); }
+      .hidden { display: none; }
+      .batch-codes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+      .batch-codes span { background: rgba(255,214,102,0.15); color: #ffd666; padding: 6px 12px; border-radius: 6px; font-family: monospace; font-size: 15px; letter-spacing: 1px; cursor: copy; }
+      .batch-codes span:hover { background: rgba(255,214,102,0.25); }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>ITC-View 管理后台</h1>
+      <p class="sub">激活码管理 · ¥11.9/30天</p>
+
+      <!-- 登录 -->
+      <div class="card" id="loginCard">
+        <h2>管理员登录</h2>
+        <div class="row">
+          <input type="password" id="loginPwd" placeholder="输入管理密码" />
+          <button onclick="login()">登录</button>
+        </div>
+        <div class="msg" id="loginMsg"></div>
+      </div>
+
+      <!-- 管理面板 -->
+      <div class="card hidden" id="panelCard">
+        <h2>生成激活码</h2>
+        <div class="row">
+          <input type="number" id="genCount" value="5" min="1" max="100" placeholder="数量" style="max-width:100px" />
+          <button onclick="generateCodes()">生成</button>
+        </div>
+        <div class="batch-codes" id="batchCodes"></div>
+        <div class="msg" id="genMsg"></div>
+
+        <h2 style="margin-top:24px">所有激活码</h2>
+        <div class="codes" id="codesList">
+          <div class="code-row header">
+            <span>激活码</span><span>创建日期</span><span>激活日期</span><span>状态</span>
+          </div>
+        </div>
+        <button class="danger" onclick="logout()" style="margin-top:16px">退出登录</button>
+      </div>
+    </div>
+
+    <script>
+      let adminToken = sessionStorage.getItem("itcview_admin");
+
+      if (adminToken) showPanel();
+
+      async function login() {
+        const pwd = document.getElementById("loginPwd").value;
+        const msg = document.getElementById("loginMsg");
+        try {
+          const r = await fetch("/api/admin/login", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: pwd })
+          });
+          const d = await r.json();
+          if (d.ok) {
+            sessionStorage.setItem("itcview_admin", d.token);
+            adminToken = d.token;
+            showPanel();
+          } else {
+            msg.textContent = d.error || "密码错误";
+            msg.className = "msg error";
+          }
+        } catch { msg.textContent = "网络错误"; msg.className = "msg error"; }
+      }
+
+      function showPanel() {
+        document.getElementById("loginCard").classList.add("hidden");
+        document.getElementById("panelCard").classList.remove("hidden");
+        loadCodes();
+      }
+
+      function logout() {
+        sessionStorage.removeItem("itcview_admin");
+        adminToken = null;
+        document.getElementById("loginCard").classList.remove("hidden");
+        document.getElementById("panelCard").classList.add("hidden");
+      }
+
+      async function generateCodes() {
+        const count = parseInt(document.getElementById("genCount").value) || 5;
+        const pwd = document.getElementById("loginPwd").value;
+        const msg = document.getElementById("genMsg");
+        const batch = document.getElementById("batchCodes");
+        try {
+          const r = await fetch("/api/admin/generate", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: pwd || "itcview2026", count })
+          });
+          const d = await r.json();
+          if (d.ok) {
+            batch.innerHTML = d.codes.map(c => `<span onclick="copyCode('${c}')" title="点击复制">${c}</span>`).join("");
+            msg.textContent = `生成了 ${d.codes.length} 个激活码 (点击复制)`;
+            msg.className = "msg ok";
+            loadCodes();
+          } else {
+            msg.textContent = d.error || "生成失败";
+            msg.className = "msg error";
+          }
+        } catch { msg.textContent = "网络错误"; msg.className = "msg error"; }
+      }
+
+      async function loadCodes() {
+        const pwd = document.getElementById("loginPwd").value;
+        try {
+          const r = await fetch(`/api/admin/codes?password=${encodeURIComponent(pwd || "itcview2026")}`);
+          const d = await r.json();
+          if (d.ok) {
+            const list = document.getElementById("codesList");
+            list.innerHTML = '<div class="code-row header"><span>激活码</span><span>创建日期</span><span>激活日期</span><span>状态</span></div>';
+            d.codes.reverse().forEach(c => {
+              const cls = c.status.includes("过期") ? "status-expired" : c.status.includes("剩余") ? "status-active" : "status-unused";
+              list.innerHTML += `<div class="code-row">
+                <span class="code-val">${c.code}</span><span>${c.createdAt}</span><span>${c.activatedAt}</span><span class="${cls}">${c.status}</span>
+              </div>`;
+            });
+          }
+        } catch {}
+      }
+
+      function copyCode(code) {
+        navigator.clipboard.writeText(code).then(() => {
+          const msg = document.getElementById("genMsg");
+          msg.textContent = `已复制: ${code}`;
+          msg.className = "msg ok";
+        }).catch(() => {});
+      }
+
+      document.getElementById("loginPwd").addEventListener("keydown", e => {
+        if (e.key === "Enter") login();
+      });
+    </script>
+  </body>
+</html>
