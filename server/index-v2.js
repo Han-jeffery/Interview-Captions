@@ -19,8 +19,8 @@ const publicDir = path.join(rootDir, "public");
 const dataDir = path.join(rootDir, "data");
 
 const PORT = Number(process.env.PORT || 3211);
-const QUESTION_IDLE_MS = Number(process.env.QUESTION_IDLE_MS || 1800);
-const QUESTION_MIN_CHARS = Number(process.env.QUESTION_MIN_CHARS || 18);
+const QUESTION_IDLE_MS = Number(process.env.QUESTION_IDLE_MS || 1000);
+const QUESTION_MIN_CHARS = Number(process.env.QUESTION_MIN_CHARS || 10);
 const ASR_PROVIDER = (process.env.ASR_PROVIDER || "deepgram").toLowerCase();
 const APP_VERSION = "1.1.0";
 const PYTHON_BIN = process.env.PYTHON_BIN || "python3";
@@ -144,7 +144,7 @@ app.get("/api/admin/codes", (req, res) => {
 
 app.get("/api/profile/get", (_req, res) => {
   try {
-    const text = fs.readFileSync(path.join(dataDir, "temp_profile.md"), "utf8");
+    const text = fs.readFileSync(path.join(dataDir, "profile.md"), "utf8");
     res.json({ ok: true, text });
   } catch {
     res.json({ ok: true, text: "" });
@@ -530,7 +530,9 @@ function looksLikeQuestion(text) {
   if (!isChineseEnglishOnly(t)) return false;
   if (t.length < QUESTION_MIN_CHARS) return false;
   if (/[?？]$/.test(t)) return true;
-  return /(tell me|can you|could you|would you|how do you|why do you|what is|what are|describe|explain|介绍|说明|讲一下|说一下|为什么|怎么|如何|能不能|有没有|你认为|你的经验|你的项目|渠道|市场|投标|商务|管理)/i.test(t);
+  // 中文问句或常见面试提问关键词
+  if (/[吗呢啊]/.test(t)) return true;
+  return /(tell me|can you|could you|would you|how|why|what|describe|explain|share|talk about|介绍|说明|讲|说|聊聊|谈|为什么|怎么|如何|能不能|有没有|认为|觉得|经验|项目|做过|擅长|熟悉|负责|处理|解决|管理|带过|leadership|team|strength|weakness|background|experience|skill|role)/i.test(t);
 }
 
 function buildPrompt(question, material) {
@@ -702,7 +704,7 @@ function handleConnection(clientWs) {
     if (!force && !looksLikeQuestion(normalized)) return;
 
     const now = Date.now();
-    if (!force && now - lastAnswerAt < 10000) return;
+    if (!force && now - lastAnswerAt < 3000) return;
 
     finalBuffer = "";
     partialText.zh = "";

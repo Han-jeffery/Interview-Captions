@@ -129,19 +129,40 @@ function connectSocket() {
 
       if (message.type === "answer_start") {
         currentAnswer = "";
-        questionEl.textContent = message.question;
-        answerEl.textContent = "思考中...";
+        // 把之前的答案保留在历史中
+        const history = transcriptEl.querySelectorAll(".answer-entry");
+        if (history.length > 0 && answerEl.textContent && answerEl.textContent !== "思考中...") {
+          const sep = document.createElement("div");
+          sep.className = "answer-entry-sep";
+          sep.textContent = "─".repeat(40);
+          answerEl.appendChild(sep);
+        }
       }
 
       if (message.type === "answer_delta") {
         currentAnswer += message.text;
-        answerEl.textContent = currentAnswer;
+        // 更新当前答案（追加模式，不清空历史）
+        const existing = answerEl.querySelector(".answer-current");
+        if (existing) {
+          existing.textContent = currentAnswer;
+        } else {
+          const cur = document.createElement("div");
+          cur.className = "answer-current";
+          cur.textContent = currentAnswer;
+          answerEl.appendChild(cur);
+        }
         answerEl.scrollTop = answerEl.scrollHeight;
       }
 
       if (message.type === "answer") {
-        questionEl.textContent = message.question || "";
-        answerEl.textContent = message.text;
+        // 移除临时元素，写入最终答案
+        const cur = answerEl.querySelector(".answer-current");
+        if (cur) cur.remove();
+        const entry = document.createElement("div");
+        entry.className = "answer-entry";
+        entry.innerHTML = `<strong>Q:</strong> ${message.question || ""}<br><strong>A:</strong> ${message.text}`;
+        answerEl.appendChild(entry);
+        answerEl.scrollTop = answerEl.scrollHeight;
       }
     });
 
