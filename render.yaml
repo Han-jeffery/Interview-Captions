@@ -5,7 +5,7 @@ services:
     region: singapore
     plan: free
     buildCommand: npm install
-    startCommand: node server/index.js
+    startCommand: node server/index-v2.js
     envVars:
       - key: PORT
         value: 10000

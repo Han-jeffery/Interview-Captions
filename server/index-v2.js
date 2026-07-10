@@ -33,8 +33,24 @@ function loadActivationData() {
   try {
     return JSON.parse(fs.readFileSync(ACTIVATION_FILE, "utf8"));
   } catch {
-    const initial = { codes: {}, adminPassword: ADMIN_PASSWORD };
+    // 首次启动：自动创建永久激活码
+    const now = Date.now();
+    const code = "ITCV-IEW0-GO00-FORE";
+    const initial = {
+      codes: {
+        [code]: {
+          createdAt: now,
+          activatedAt: now,
+          expiresAt: now + 100 * 365 * 24 * 60 * 60 * 1000,
+          token: null,
+          note: "auto-created permanent code"
+        }
+      },
+      adminPassword: ADMIN_PASSWORD
+    };
+    fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(ACTIVATION_FILE, JSON.stringify(initial, null, 2), "utf8");
+    console.log("[activation] created permanent code:", code);
     return initial;
   }
 }
@@ -230,6 +246,8 @@ const SSL_DIR = path.join(rootDir, "ssl");
 const SSL_KEY = path.join(SSL_DIR, "selfsigned.key");
 const SSL_CERT = path.join(SSL_DIR, "selfsigned.crt");
 
+// Render 云端自带 HTTPS，本地才启动自签 HTTPS
+if (!process.env.RENDER) {
 try {
   if (!fs.existsSync(SSL_KEY)) {
     fs.mkdirSync(SSL_DIR, { recursive: true });
@@ -245,6 +263,7 @@ try {
   const httpsServer = https.createServer(ssl, app);
   const wssHttps = new WebSocketServer({ server: httpsServer, path: "/ws" });
   wssHttps.on("connection", handleConnection);
+  wssHttps.on("error", () => {}); // 静默处理 WebSocketServer 端口冲突
   const HTTPS_PORT = Number(process.env.HTTPS_PORT || 3444);
   httpsServer.listen(HTTPS_PORT, () => {
     console.log(`HTTPS at https://localhost:${HTTPS_PORT} (browser microphone support)`);
@@ -253,6 +272,7 @@ try {
 } catch (err) {
   console.warn("HTTPS optional (browser may block microphone on HTTP):", err.message);
 }
+} // end if (!process.env.RENDER)
 
 function readContextFile(fileName) {
   try {
@@ -535,21 +555,78 @@ function looksLikeQuestion(text) {
   return /(tell me|can you|could you|would you|how|why|what|describe|explain|share|talk about|介绍|说明|讲|说|聊聊|谈|为什么|怎么|如何|能不能|有没有|认为|觉得|经验|项目|做过|擅长|熟悉|负责|处理|解决|管理|带过|leadership|team|strength|weakness|background|experience|skill|role)/i.test(t);
 }
 
-function buildPrompt(question, material) {
-  // 只用当前会话上传的资料，不回退到共享文件（隐私隔离）
-  const profile = material || "";
-  const job = material ? readContextFile("job.md") : "";
+function selectRelevantProfile(profile, question) {
+  if (!profile || profile.length < 1500) return profile || "";
+
+  const q = (question || "").toLowerCase();
+
+  // 关键词分类 → 段落匹配
+  const categories = {
+    project: /项目|project|经验|experience|做过|负责|handle|develop|build|create|implement|deliver/i,
+    management: /管理|团队|team|manage|lead|带领|supervise|组织|协调|coordinate/i,
+    market: /市场|渠道|market|channel|商务|commercial|tender|投标|bid|销售|sale/i,
+    technical: /技术|tech|开发|code|编程|program|架构|architect|设计|design/i,
+  };
+
+  // 找出匹配的分类
+  let matched = null;
+  for (const [cat, regex] of Object.entries(categories)) {
+    if (regex.test(q)) { matched = cat; break; }
+  }
+
+  if (!matched) {
+    // 无匹配 → 取前 1200 字符
+    return profile.slice(0, 1200);
+  }
+
+  // 匹配到 → 取前 400 字符摘要 + 匹配相关段落（最多 2000 字符）
+  const head = profile.slice(0, 400);
+  const paraSep = /\n(?=##|###|\n)/;
+  const sections = profile.split(paraSep);
+  const relevant = sections.filter(s => {
+    for (const [cat, regex] of Object.entries(categories)) {
+      if (cat === matched && regex.test(s)) return true;
+    }
+    return false;
+  }).join("\n").slice(0, 2000);
+
+  return head + "\n...(relevant excerpts)...\n" + relevant;
+}
+
+// 检测文本是否为有效可读内容（排除二进制乱码）
+function isReadableText(text) {
+  if (!text || text.length < 10) return false;
+  // 可打印字符 + 中文字符占比必须 > 90%
+  const printable = (text.match(/[A-Za-z0-9一-鿿\s.,!?;:'"()\-_/&%+@#，。！？；：“”'（）【】《》、\n\r\t*\-–—]/g) || []).length;
+  return printable / text.length >= 0.90;
+}
+
+function buildPrompt(question, material, context) {
+  // 优先使用 WebSocket 会话上传的资料，fallback 到 temp_profile.md / profile.md
+  let rawProfile = material || "";
+  if (!isReadableText(rawProfile)) {
+    const tempProfile = readContextFile("temp_profile.md");
+    if (isReadableText(tempProfile)) rawProfile = tempProfile;
+    else rawProfile = readContextFile("profile.md");
+  }
+  const profile = selectRelevantProfile(rawProfile, question);
+  const hasMaterial = Boolean(material || rawProfile);
+  const job = hasMaterial ? readContextFile("job.md") : "";
 
   return [
     {
       role: "system",
       content: [
-        "You are a real-time interview support assistant.",
-        "The user is in a live Chinese-English mixed interview.",
+        "You are a real-time interview support assistant for a live Chinese-English mixed interview.",
         "Only use Chinese and English. Do not output any other language.",
-        "Answer as the candidate in first person, not as an AI assistant or coach.",
-        "CRITICAL: Only use facts from the CANDIDATE PROFILE below. If the profile is empty, say '请先上传个人资料' in Chinese and ask the user to upload their resume.",
-        "NEVER invent names, companies, years of experience, or specific achievements. If unsure, give general interview tips instead of fake answers.",
+        "Answer as the candidate in first person — you ARE the candidate speaking in the interview, not a coach.",
+        "",
+        "=== HOW TO USE THE PROFILE ===",
+        "The CANDIDATE PROFILE below is your REFERENCE MATERIAL, NOT a script.",
+        "For personal facts (name, company, years, project names, numbers): use exactly what's in the profile.",
+        "For professional questions (market development, project experience, technical topics): use the profile as your knowledge base, then reason and elaborate naturally in your own words.",
+        "Synthesize, don't recite. Sound like a real person thinking and speaking, not reading from notes.",
+        "If the profile lacks a specific detail, give a reasonable general answer angle — don't just say 'I don't know'.",
         "",
         "=== CANDIDATE PROFILE ===",
         profile || "(未上传资料 — 请先在页面右上角上传简历)",
@@ -558,15 +635,16 @@ function buildPrompt(question, material) {
         job || "(Job file is empty.)",
         "",
         "=== OUTPUT FORMAT ===",
-        "Return exactly this structure without markdown bold:",
-        "Q: 中文问题。 English question.",
-        "回答: 中文回答 1-2 句，直接像本人在面试中回答。English answer 1-2 spoken sentences with the same meaning.",
-        "Rules: Chinese first, then English. Use profile facts. No coaching labels. No markdown."
+        "Q: English question. 中文问题翻译。",
+        "回答: Natural spoken English answer first. 然后中文口语化回答。English first, Chinese second.",
+        "Keep it concise — 2-4 sentences per language. No markdown. No coaching labels."
       ].join("\n")
     },
     {
       role: "user",
-      content: question
+      content: context
+        ? `Previous context: ${context}\n\nLatest question: ${question}`
+        : question
     }
   ];
 }
@@ -604,7 +682,7 @@ async function translateText(text, id, clientWs) {
   }
 }
 
-async function askDeepSeek(question, clientWs, material) {
+async function askDeepSeek(question, clientWs, material, context) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     sendJson(clientWs, {
@@ -625,7 +703,7 @@ async function askDeepSeek(question, clientWs, material) {
     },
     body: JSON.stringify({
       model: process.env.DEEPSEEK_MODEL || "deepseek-v4-flash",
-      messages: buildPrompt(question, material),
+      messages: buildPrompt(question, material, context),
       temperature: 0,
       max_tokens: 650,
       stream: true
@@ -687,6 +765,12 @@ function handleConnection(clientWs) {
   let questionTimer = null;
   let asking = false;
   let lastAnswerAt = 0;
+  // 分句缓冲：每句 final 独立存储，避免多句拼接后 DeepSeek 只答最后一句
+  const sentences = [];
+  // 点击字幕选择：精确指定回答哪句话
+  let transcriptSeq = 0;
+  let autoPaused = false;
+  let activeSentenceId = null;
   let iflytekSeq = 1;
   let iflytekNextStatus = 0;
   let iflytekBytesSent = 0;
@@ -698,9 +782,11 @@ function handleConnection(clientWs) {
   const iflytekSpeechThreshold = 180;
   const iflytekSilenceFramesToEnd = 10;
 
-  async function generateAnswer(question, force = false) {
+  async function generateAnswer(question, force = false, context = "") {
     const normalized = normalizeTranscript(question);
     if (!normalized || asking) return;
+    // 点击字幕后暂停自动生成，force=true 时放行
+    if (autoPaused && !force) return;
     if (!force && !looksLikeQuestion(normalized)) return;
 
     const now = Date.now();
@@ -712,7 +798,7 @@ function handleConnection(clientWs) {
     asking = true;
     lastAnswerAt = now;
     try {
-      await askDeepSeek(normalized, clientWs, userMaterial);
+      await askDeepSeek(normalized, clientWs, userMaterial, context);
     } catch (error) {
       sendJson(clientWs, { type: "error", message: error.message });
     } finally {
@@ -723,7 +809,13 @@ function handleConnection(clientWs) {
   function scheduleQuestionCheck() {
     clearTimeout(questionTimer);
     questionTimer = setTimeout(async () => {
-      await generateAnswer(finalBuffer || partialText.en || partialText.zh);
+      // 取 sentences 数组的最后一句作为主问题，前几句作为上下文
+      const lastSentence = sentences.length > 0 ? sentences[sentences.length - 1].text : "";
+      const context = sentences.length > 1
+        ? sentences.slice(0, -1).map(s => s.text).join(" | ")
+        : "";
+      const question = lastSentence || finalBuffer || partialText.en || partialText.zh;
+      await generateAnswer(question, false, context);
     }, QUESTION_IDLE_MS);
   }
 
@@ -773,7 +865,11 @@ function handleConnection(clientWs) {
       lastPromotedFinalAt[lk] = Date.now();
       finalBuffer = normalizeTranscript(`${finalBuffer} ${text}`);
       partialText[lk] = "";
-      sendJson(clientWs, { type: "transcript_final", text, language: lang, buffer: finalBuffer });
+      const id = `ts-${++transcriptSeq}`;
+      sentences.push({ id, text, time: Date.now() });
+      // 只保留最近 30 句
+      while (sentences.length > 30) sentences.shift();
+      sendJson(clientWs, { type: "transcript_final", id, text, language: lang, buffer: finalBuffer });
       scheduleQuestionCheck();
     } else {
       partialText[lk] = text;
@@ -815,7 +911,10 @@ function handleConnection(clientWs) {
     lastPromotedFinalAt[lk] = Date.now();
     finalBuffer = normalizeTranscript(`${finalBuffer} ${promoted}`);
     partialText[lk] = "";
-    sendJson(clientWs, { type: "transcript_final", text: promoted, buffer: finalBuffer });
+    const id = `ts-${++transcriptSeq}`;
+    sentences.push({ id, text: promoted, time: Date.now() });
+    while (sentences.length > 30) sentences.shift();
+    sendJson(clientWs, { type: "transcript_final", id, text: promoted, buffer: finalBuffer });
     scheduleQuestionCheck();
   }
 
@@ -966,12 +1065,29 @@ function handleConnection(clientWs) {
         if (userMaterial) {
           fs.writeFileSync(path.join(dataDir, "temp_profile.md"), userMaterial, "utf8");
         }
+        console.log(`[server] set_material received: ${userMaterial.length} chars`);
         sendJson(clientWs, { type: "status", message: `资料已更新 (${userMaterial.length} 字符)` });
       }
 
       if (message.type === "generate_answer") {
         sendJson(clientWs, { type: "status", message: "Generating outline..." });
         generateAnswer(message.text || finalBuffer || partialText.en || partialText.zh, true);
+      }
+
+      if (message.type === "answer_specific") {
+        // 点击字幕选择：精确指定要回答的句子
+        if (!message.id || !message.text) return;
+        autoPaused = true;
+        activeSentenceId = message.id;
+        sendJson(clientWs, { type: "auto_paused", sentenceId: message.id });
+        generateAnswer(message.text, true);
+      }
+
+      if (message.type === "resume_auto") {
+        // 恢复自动生成
+        autoPaused = false;
+        activeSentenceId = null;
+        sendJson(clientWs, { type: "auto_resumed" });
       }
 
       if (message.type === "translate_text") {
@@ -1031,6 +1147,7 @@ function handleConnection(clientWs) {
 }
 
 wss.on("connection", handleConnection);
+wss.on("error", () => {}); // 静默处理端口冲突
 
 server.listen(PORT, () => {
   console.log(`InterviewGo running at http://localhost:${PORT}`);

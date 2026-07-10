@@ -6,6 +6,7 @@ const stopBtn = document.querySelector("#stopBtn");
 const generateBtn = document.querySelector("#generateBtn");
 const clearTranscriptBtn = document.querySelector("#clearTranscriptBtn");
 const clearAnswerBtn = document.querySelector("#clearAnswerBtn");
+const resumeAutoBtn = document.querySelector("#resumeAutoBtn");
 const statusEl = document.querySelector("#status");
 const partialEl = document.querySelector("#partial");
 const transcriptEl = document.querySelector("#transcript");
@@ -83,12 +84,27 @@ async function loadDevices() {
   }
 }
 
-function appendTranscript(text) {
+function appendTranscript(text, id) {
   const line = document.createElement("div");
   line.className = "final-line";
+  line.dataset.id = id || "";
   line.textContent = text;
-  transcriptEl.appendChild(line);
-  transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  line.title = "点击回答此问题";
+
+  line.addEventListener("click", () => {
+    // 取消其他行的高亮
+    transcriptEl.querySelectorAll(".final-line.selected").forEach(el => el.classList.remove("selected"));
+    // 高亮当前行
+    line.classList.add("selected");
+    // 发送精确回答请求
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "answer_specific", id: id || "", text }));
+    }
+    setStatus("已锁定此问题，自动生成已暂停");
+    if (resumeAutoBtn) resumeAutoBtn.style.display = "inline-block";
+  });
+
+  transcriptEl.prepend(line);
 }
 
 function connectSocket() {
@@ -116,6 +132,17 @@ function connectSocket() {
         setStatus(message.message, true);
       }
 
+      if (message.type === "auto_paused") {
+        setStatus("已锁定问题，自动生成已暂停");
+        if (resumeAutoBtn) resumeAutoBtn.style.display = "inline-block";
+      }
+
+      if (message.type === "auto_resumed") {
+        setStatus("自动生成已恢复");
+        if (resumeAutoBtn) resumeAutoBtn.style.display = "none";
+        transcriptEl.querySelectorAll(".final-line.selected").forEach(el => el.classList.remove("selected"));
+      }
+
       if (message.type === "transcript_partial") {
         const langTag = message.language === "zh" ? "[中]" : message.language === "en" ? "[EN]" : "";
         partialEl.textContent = (langTag ? langTag + " " : "") + message.text;
@@ -124,7 +151,7 @@ function connectSocket() {
       if (message.type === "transcript_final") {
         partialEl.textContent = "";
         const langTag = message.language === "zh" ? "[中]" : message.language === "en" ? "[EN]" : "";
-        appendTranscript((langTag ? langTag + " " : "") + message.text);
+        appendTranscript((langTag ? langTag + " " : "") + message.text, message.id || "");
       }
 
       if (message.type === "answer_start") {
@@ -135,7 +162,7 @@ function connectSocket() {
           const sep = document.createElement("div");
           sep.className = "answer-entry-sep";
           sep.textContent = "─".repeat(40);
-          answerEl.appendChild(sep);
+          answerEl.prepend(sep);
         }
       }
 
@@ -149,9 +176,8 @@ function connectSocket() {
           const cur = document.createElement("div");
           cur.className = "answer-current";
           cur.textContent = currentAnswer;
-          answerEl.appendChild(cur);
+          answerEl.prepend(cur);
         }
-        answerEl.scrollTop = answerEl.scrollHeight;
       }
 
       if (message.type === "answer") {
@@ -161,8 +187,7 @@ function connectSocket() {
         const entry = document.createElement("div");
         entry.className = "answer-entry";
         entry.innerHTML = `<strong>Q:</strong> ${message.question || ""}<br><strong>A:</strong> ${message.text}`;
-        answerEl.appendChild(entry);
-        answerEl.scrollTop = answerEl.scrollHeight;
+        answerEl.prepend(entry);
       }
     });
 
@@ -257,6 +282,16 @@ clearTranscriptBtn.addEventListener("click", () => {
 clearAnswerBtn.addEventListener("click", () => {
   questionEl.textContent = "";
   answerEl.textContent = "";
+});
+resumeAutoBtn?.addEventListener("click", () => {
+  // 清除所有高亮
+  transcriptEl.querySelectorAll(".final-line.selected").forEach(el => el.classList.remove("selected"));
+  // 发送恢复自动
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "resume_auto" }));
+  }
+  resumeAutoBtn.style.display = "none";
+  setStatus("自动生成已恢复");
 });
 
 // ---- 资料导入 ----
