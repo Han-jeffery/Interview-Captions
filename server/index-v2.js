@@ -533,8 +533,8 @@ function looksLikeQuestion(text) {
   return /(tell me|can you|could you|would you|how do you|why do you|what is|what are|describe|explain|介绍|说明|讲一下|说一下|为什么|怎么|如何|能不能|有没有|你认为|你的经验|你的项目|渠道|市场|投标|商务|管理)/i.test(t);
 }
 
-function buildPrompt(question) {
-  const profile = userMaterial || readContextFile("profile.md");
+function buildPrompt(question, material) {
+  const profile = material || readContextFile("profile.md");
   const job = readContextFile("job.md");
 
   return [
@@ -623,7 +623,7 @@ async function askDeepSeek(question, clientWs) {
     },
     body: JSON.stringify({
       model: process.env.DEEPSEEK_MODEL || "deepseek-v4-flash",
-      messages: buildPrompt(question),
+      messages: buildPrompt(question, userMaterial),
       temperature: 0,
       max_tokens: 650,
       stream: true
