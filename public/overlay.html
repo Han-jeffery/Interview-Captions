@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interview Floating Captions</title>
+    <link rel="stylesheet" href="/overlay.css" />
+  </head>
+  <body>
+    <main class="overlay">
+      <header class="titlebar">
+        <div class="drag-region">
+          <strong>Interview Captions</strong>
+          <span id="status" class="visually-hidden">Starting</span>
+        </div>
+        <div class="window-actions">
+          <button id="autoBtn" type="button" class="toggle-on" title="Auto-generate outline after a question stops">自动开</button>
+          <button id="materialBtn" type="button" title="Import interview material text">资料</button>
+          <button id="generateBtn" type="button" title="Generate outline from current caption">生成</button>
+          <button id="compactBtn" type="button" title="Toggle answer panel">隐藏</button>
+          <button id="clickThroughBtn" type="button" title="Cmd+Shift+T toggles mouse click-through">穿透</button>
+          <button id="minimizeBtn" type="button" title="Minimize">-</button>
+          <button id="closeBtn" type="button" title="Close">x</button>
+        </div>
+      </header>
+
+      <section class="controls">
+        <select id="deviceSelect" title="Audio input"></select>
+        <select id="languageSelect" title="ASR language">
+          <option value="zh-CN" selected>中文 (中英混合)</option>
+          <option value="en-US">English</option>
+        </select>
+        <button id="refreshBtn" type="button">刷新</button>
+        <button id="startBtn" type="button">开始</button>
+        <button id="stopBtn" type="button" disabled>停止</button>
+      </section>
+
+      <section class="audio-meter" title="Input volume">
+        <span>输入音量</span>
+        <div class="meter-track"><div class="meter-fill" id="meterFill"></div></div>
+        <span id="frameCount">0 frames</span>
+        <span class="visible-status" id="visibleStatus">未开始</span>
+      </section>
+
+      <section class="content-grid">
+        <section class="caption-card">
+          <div class="caption-label">实时字幕</div>
+          <div class="caption-text" id="captionText">选择音频输入后点击开始。</div>
+          <div class="caption-history" id="captionHistory"></div>
+        </section>
+
+        <section class="answer-card" id="answerCard">
+          <div class="caption-label">我的回答</div>
+          <div class="question" id="question"></div>
+          <pre class="answer" id="answer"></pre>
+        </section>
+      </section>
+      <input id="materialInput" type="file" accept=".txt,.md,.markdown,.json,.docx,.pdf,text/plain,text/markdown,application/json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+
+      <section class="material-modal hidden" id="materialModal" aria-modal="true" role="dialog">
+        <div class="material-card">
+          <header>
+            <strong>导入资料</strong>
+            <button id="materialCloseBtn" type="button">x</button>
+          </header>
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-title">把 Word / PDF / 文本资料拖到这里</div>
+            <div class="drop-subtitle">支持 .docx, .pdf, .txt, .md, .json</div>
+            <button id="chooseMaterialBtn" type="button">选择电脑资料</button>
+          </div>
+          <div class="material-result" id="materialResult">资料会保存到本地 profile.md，关闭 app 后仍保留。</div>
+          <div class="material-actions">
+            <button id="clearMaterialBtn" type="button">清空已导入资料</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/overlay.js" type="module"></script>
+  </body>
+</html>

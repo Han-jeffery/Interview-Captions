@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interview Copilot</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <h1>Interview Copilot</h1>
+          <p>Realtime Chinese-English interview support for technical, business, channel, and tendering interviews.</p>
+        </div>
+        <div class="status" id="status">Disconnected</div>
+      </section>
+
+      <section class="controls">
+        <label>
+          Audio input
+          <select id="deviceSelect"></select>
+        </label>
+        <label>
+          Language
+          <select id="languageSelect">
+            <option value="zh-CN" selected>中文 (中英混合)</option>
+            <option value="en-US">English</option>
+          </select>
+        </label>
+        <button id="refreshBtn" type="button">Refresh Devices</button>
+        <button id="startBtn" type="button">Start Listening</button>
+        <button id="stopBtn" type="button" disabled>Stop</button>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <header>
+            <h2>Live Transcript</h2>
+            <button id="clearTranscriptBtn" type="button">Clear</button>
+          </header>
+          <div class="partial" id="partial"></div>
+          <div class="transcript" id="transcript"></div>
+        </article>
+
+        <article class="panel answer-panel">
+          <header>
+            <h2>Answer Support</h2>
+            <button id="clearAnswerBtn" type="button">Clear</button>
+          </header>
+          <div class="question" id="question"></div>
+          <pre class="answer" id="answer"></pre>
+        </article>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+{
+  "name": "interview-go",
+  "version": "1.0.0",
+  "description": "AI实时面试助手 - 中英文双语字幕 + DeepSeek智能答题",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "desktop": "electron electron/main.cjs",
+    "build:win": "electron-builder --win portable --x64",
+    "build:mac": "electron-builder --mac --x64",
+    "build:all": "electron-builder --win portable --mac --x64"
+  },
+  "build": {
+    "appId": "com.interviewgo.app",
+    "productName": "InterviewGo",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "server/**/*",
+      "public/**/*",
+      "electron/**/*",
+      "assets/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/InterviewCaptions.icns",
+        "to": "icon.icns"
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/InterviewCaptions.iconset/icon_512x512.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/InterviewCaptions.icns",
+      "category": "public.app-category.productivity"
+    },
+    "portable": {
+      "artifactName": "InterviewGo-${version}-portable.${ext}"
+    }
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^25.1.8"
+  }
+}

@@ -1,0 +1,6 @@
+#!/bin/zsh
+set -euo pipefail
+cd "/Volumes/HML-Apple/英文面试"
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export NODE_BINARY="/opt/homebrew/bin/node"
+exec "/opt/homebrew/bin/npm" run desktop
