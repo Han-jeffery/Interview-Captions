@@ -142,6 +142,15 @@ app.get("/api/admin/codes", (req, res) => {
   res.json({ ok: true, codes: list });
 });
 
+app.get("/api/profile/get", (_req, res) => {
+  try {
+    const text = fs.readFileSync(path.join(dataDir, "temp_profile.md"), "utf8");
+    res.json({ ok: true, text });
+  } catch {
+    res.json({ ok: true, text: "" });
+  }
+});
+
 app.get("/health", (_req, res) => {
   res.json({
     ok: true,
@@ -525,7 +534,7 @@ function looksLikeQuestion(text) {
 }
 
 function buildPrompt(question) {
-  const profile = readContextFile("profile.md");
+  const profile = userMaterial || readContextFile("profile.md");
   const job = readContextFile("job.md");
 
   return [
@@ -668,6 +677,7 @@ const handleConnection = (clientWs) => {
   // Dual Deepgram connections for Chinese-English bilingual support
   const asrConns = Object.create(null);
   let finalBuffer = "";
+  let userMaterial = "";
   // Per-language state to avoid zh/en connections interfering with each other
   const partialText = { zh: "", en: "" };
   const lastPromotedFinal = { zh: "", en: "" };
@@ -946,6 +956,15 @@ const handleConnection = (clientWs) => {
         asrConns.iflytek?.close();
         // Clear all connections
         for (const key of Object.keys(asrConns)) { delete asrConns[key]; }
+      }
+
+      if (message.type === "set_material") {
+        userMaterial = message.text || "";
+        // 写入临时文件供 AI 使用
+        if (userMaterial) {
+          fs.writeFileSync(path.join(dataDir, "temp_profile.md"), userMaterial, "utf8");
+        }
+        sendJson(clientWs, { type: "status", message: `资料已更新 (${userMaterial.length} 字符)` });
       }
 
       if (message.type === "generate_answer") {

@@ -231,6 +231,35 @@ h2 {
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
+/* 资料弹窗 */
+.material-modal {
+  position: fixed; inset: 0; z-index: 20;
+  display: grid; place-items: center; padding: 18px;
+  background: rgba(0,0,0,0.5);
+}
+.material-modal.hidden { display: none; }
+.material-card {
+  width: min(520px, 100%); border: 1px solid var(--line);
+  border-radius: 12px; background: var(--panel);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.material-card header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--line);
+}
+.drop-zone {
+  display: grid; place-items: center; gap: 8px;
+  min-height: 160px; margin: 16px; padding: 24px;
+  border: 2px dashed rgba(88,166,255,0.4); border-radius: 12px;
+  background: rgba(88,166,255,0.05); text-align: center; cursor: copy;
+}
+.drop-zone.drag-over { border-color: #58a6ff; background: rgba(88,166,255,0.12); }
+.drop-title { font-size: 18px; font-weight: 700; }
+.drop-subtitle, .material-result { color: var(--muted); font-size: 13px; }
+.material-result { padding: 0 16px 14px; }
+.material-actions { display: flex; justify-content: flex-end; padding: 0 16px 14px; }
+#clearMaterialBtn { border-color: rgba(255,123,114,0.4); color: var(--danger); }
+
 @media (max-width: 900px) {
   .topbar, .controls { display: grid; }
   .grid { grid-template-columns: 1fr; }

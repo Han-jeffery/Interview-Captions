@@ -31,6 +31,7 @@
         <button id="startBtn" type="button">开始监听</button>
         <button id="stopBtn" type="button" disabled>停止</button>
         <button id="generateBtn" type="button" title="根据当前字幕生成回答">生成回答</button>
+        <button id="materialBtn" type="button" title="导入面试资料">📁 资料</button>
       </section>
 
       <section class="audio-meter" title="输入音量">
@@ -60,6 +61,26 @@
         </article>
       </section>
     </main>
+
+    <!-- 资料导入弹窗 -->
+    <section class="material-modal hidden" id="materialModal" aria-modal="true" role="dialog">
+      <div class="material-card">
+        <header>
+          <strong>导入资料</strong>
+          <button id="materialCloseBtn" type="button">✕</button>
+        </header>
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-title">把 Word / PDF / 文本资料拖到这里</div>
+          <div class="drop-subtitle">支持 .docx, .pdf, .txt, .md</div>
+          <button id="chooseMaterialBtn" type="button">选择文件</button>
+        </div>
+        <div class="material-result" id="materialResult">资料仅保存在当前浏览器中</div>
+        <div class="material-actions">
+          <button id="clearMaterialBtn" type="button">清空资料</button>
+        </div>
+      </div>
+    </section>
+    <input id="materialInput" type="file" accept=".txt,.md,.docx,.pdf,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
 
     <script>
   // 激活码校验

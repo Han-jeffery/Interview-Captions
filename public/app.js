@@ -14,8 +14,17 @@ const answerEl = document.querySelector("#answer");
 const meterFill = document.querySelector("#meterFill");
 const frameCount = document.querySelector("#frameCount");
 const visibleStatus = document.querySelector("#visibleStatus");
+const materialBtn = document.querySelector("#materialBtn");
+const materialModal = document.querySelector("#materialModal");
+const materialCloseBtn = document.querySelector("#materialCloseBtn");
+const dropZone = document.querySelector("#dropZone");
+const chooseMaterialBtn = document.querySelector("#chooseMaterialBtn");
+const materialInput = document.querySelector("#materialInput");
+const materialResult = document.querySelector("#materialResult");
+const clearMaterialBtn = document.querySelector("#clearMaterialBtn");
 
 let ws;
+let userMaterial = localStorage.getItem("itcview_material") || "";
 let audioContext;
 let mediaStream;
 let sourceNode;
@@ -90,6 +99,9 @@ function connectSocket() {
 
     ws.addEventListener("open", () => {
       ws.send(JSON.stringify({ type: "start", language: languageSelect?.value || "zh-CN" }));
+      if (userMaterial) {
+        ws.send(JSON.stringify({ type: "set_material", text: userMaterial }));
+      }
       resolve();
     });
 
@@ -224,6 +236,81 @@ clearTranscriptBtn.addEventListener("click", () => {
 clearAnswerBtn.addEventListener("click", () => {
   questionEl.textContent = "";
   answerEl.textContent = "";
+});
+
+// ---- 资料导入 ----
+materialBtn?.addEventListener("click", () => {
+  materialModal.classList.remove("hidden");
+  if (userMaterial) {
+    materialResult.textContent = `已导入 ${userMaterial.length} 字符的资料`;
+  }
+});
+materialCloseBtn?.addEventListener("click", () => materialModal.classList.add("hidden"));
+materialModal?.addEventListener("click", (e) => {
+  if (e.target === materialModal) materialModal.classList.add("hidden");
+});
+
+chooseMaterialBtn?.addEventListener("click", () => materialInput.click());
+materialInput?.addEventListener("change", () => {
+  const file = materialInput.files[0];
+  if (file) uploadMaterial(file);
+});
+
+dropZone?.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+dropZone?.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+dropZone?.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropZone.classList.remove("drag-over");
+  const file = e.dataTransfer.files[0];
+  if (file) uploadMaterial(file);
+});
+
+async function uploadMaterial(file) {
+  materialResult.textContent = "解析中...";
+  try {
+    const reader = new FileReader();
+    reader.onload = async function() {
+      const base64 = reader.result.split(",")[1];
+      const res = await fetch("/api/profile/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, base64, mode: "replace" })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        userMaterial = "";
+        // 从服务器拉取解析后的文本
+        const getRes = await fetch("/api/profile/get");
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          userMaterial = getData.text || "";
+        }
+        localStorage.setItem("itcview_material", userMaterial);
+        materialResult.textContent = `✅ 已导入 (${userMaterial.length} 字符) — 下次连接时生效`;
+        // 如果已连接，立即发送
+        if (ws?.readyState === WebSocket.OPEN && userMaterial) {
+          ws.send(JSON.stringify({ type: "set_material", text: userMaterial }));
+        }
+      } else {
+        // 纯文本文件直接读取
+        userMaterial = atob(base64);
+        localStorage.setItem("itcview_material", userMaterial);
+        materialResult.textContent = `✅ 已导入纯文本 (${userMaterial.length} 字符)`;
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "set_material", text: userMaterial }));
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  } catch (e) {
+    materialResult.textContent = "导入失败: " + e.message;
+  }
+}
+
+clearMaterialBtn?.addEventListener("click", () => {
+  userMaterial = "";
+  localStorage.removeItem("itcview_material");
+  materialResult.textContent = "资料已清空";
 });
 
 loadDevices().catch((error) => setStatus(error.message, true));
