@@ -536,8 +536,9 @@ function looksLikeQuestion(text) {
 }
 
 function buildPrompt(question, material) {
-  const profile = material || readContextFile("profile.md");
-  const job = readContextFile("job.md");
+  // 只用当前会话上传的资料，不回退到共享文件（隐私隔离）
+  const profile = material || "";
+  const job = material ? readContextFile("job.md") : "";
 
   return [
     {
@@ -547,12 +548,11 @@ function buildPrompt(question, material) {
         "The user is in a live Chinese-English mixed interview.",
         "Only use Chinese and English. Do not output any other language.",
         "Answer as the candidate in first person, not as an AI assistant or coach.",
-        "Use the imported candidate profile and interview material as the primary source. Pull concrete facts from it when relevant.",
-        "Do not invent experience. If the material lacks a specific fact, give a natural answer angle without fabricating numbers or names.",
-        "Focus areas: engineering/technical, market development/channel expansion for Hengtong International, management/business, tendering/bidding.",
+        "CRITICAL: Only use facts from the CANDIDATE PROFILE below. If the profile is empty, say '请先上传个人资料' in Chinese and ask the user to upload their resume.",
+        "NEVER invent names, companies, years of experience, or specific achievements. If unsure, give general interview tips instead of fake answers.",
         "",
         "=== CANDIDATE PROFILE ===",
-        profile || "(Profile file is empty.)",
+        profile || "(未上传资料 — 请先在页面右上角上传简历)",
         "",
         "=== TARGET ROLE / JD ===",
         job || "(Job file is empty.)",
