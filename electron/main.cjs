@@ -71,7 +71,7 @@ function createWindow() {
     hasShadow: false,
     resizable: true,
     fullscreenable: false,
-    title: "Interview Floating Captions",
+    title: "ITC-View",
     backgroundColor: "#00000000",
     webPreferences: {
       contextIsolation: true,
@@ -116,7 +116,7 @@ ipcMain.handle("window:toggle-click-through", () => {
 app.whenReady().then(async () => {
   // Ensure the app appears in the Dock with the correct name
   if (process.platform === "darwin") {
-    app.setName("Interview Captions");
+    app.setName("ITC-View");
   }
 
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {

@@ -32,10 +32,33 @@ function setStatus(message, isError = false) {
 }
 
 async function loadDevices() {
-  await navigator.mediaDevices.getUserMedia({ audio: true });
+  try {
+    // 请求麦克风权限，HTTP 非 localhost 会被浏览器拒绝
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    // 成功后立即释放，这只是为了获取权限和设备标签
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(t => t.stop());
+  } catch (e) {
+    // HTTP 环境或权限被拒绝 → 尝试直接枚举（可能没有标签）
+    console.warn("麦克风权限获取失败:", e.message);
+  }
+
   const devices = await navigator.mediaDevices.enumerateDevices();
   const audioInputs = devices.filter((device) => device.kind === "audioinput");
   deviceSelect.innerHTML = "";
+
+  if (audioInputs.length === 0) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "未检测到设备 — 请允许麦克风权限";
+    deviceSelect.appendChild(opt);
+
+    // 如果是 HTTP 非 localhost，给提示
+    if (location.protocol === "http:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+      setStatus("⚠️ HTTP 下麦克风被浏览器阻止，请用 Chrome 开启 insecure origin 或使用 HTTPS", true);
+    }
+    return;
+  }
 
   for (const device of audioInputs) {
     const option = document.createElement("option");
