@@ -23,6 +23,7 @@
       "server/**/*",
       "public/**/*",
       "electron/**/*",
+      "scripts/**/*",
       "assets/**/*",
       "node_modules/**/*",
       "package.json"

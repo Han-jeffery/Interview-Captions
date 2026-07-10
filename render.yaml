@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: interview-go
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm install
+    startCommand: node server/index.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: ASR_PROVIDER
+        value: deepgram
+      - key: DEEPGRAM_MODEL
+        value: nova-3
+      - key: DEEPGRAM_LANGUAGE
+        value: zh-CN
+      - key: QUESTION_IDLE_MS
+        value: "1800"
+      - key: QUESTION_MIN_CHARS
+        value: "18"
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: PYTHON_BIN
+        value: python3
