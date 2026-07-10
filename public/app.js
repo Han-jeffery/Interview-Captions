@@ -10,6 +10,9 @@ const partialEl = document.querySelector("#partial");
 const transcriptEl = document.querySelector("#transcript");
 const questionEl = document.querySelector("#question");
 const answerEl = document.querySelector("#answer");
+const meterFill = document.querySelector("#meterFill");
+const frameCount = document.querySelector("#frameCount");
+const visibleStatus = document.querySelector("#visibleStatus");
 
 let ws;
 let audioContext;
@@ -17,10 +20,15 @@ let mediaStream;
 let sourceNode;
 let workletNode;
 let currentAnswer = "";
+let frameCounter = 0;
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.classList.toggle("error", isError);
+  if (visibleStatus) {
+    visibleStatus.textContent = message;
+    visibleStatus.classList.toggle("error", isError);
+  }
 }
 
 async function loadDevices() {
@@ -32,7 +40,7 @@ async function loadDevices() {
   for (const device of audioInputs) {
     const option = document.createElement("option");
     option.value = device.deviceId;
-    option.textContent = device.label || `Audio input ${deviceSelect.length + 1}`;
+    option.textContent = device.label || `音频设备 ${deviceSelect.length + 1}`;
     deviceSelect.appendChild(option);
   }
 
@@ -86,7 +94,7 @@ function connectSocket() {
       if (message.type === "answer_start") {
         currentAnswer = "";
         questionEl.textContent = message.question;
-        answerEl.textContent = "Thinking...";
+        answerEl.textContent = "思考中...";
       }
 
       if (message.type === "answer_delta") {
@@ -101,14 +109,14 @@ function connectSocket() {
       }
     });
 
-    ws.addEventListener("error", () => reject(new Error("Local websocket failed.")));
+    ws.addEventListener("error", () => reject(new Error("WebSocket 连接失败")));
   });
 }
 
 async function startListening() {
   try {
     startBtn.disabled = true;
-    setStatus("Starting...");
+    setStatus("启动中...");
     await connectSocket();
 
     mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -127,16 +135,22 @@ async function startListening() {
     workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
 
     workletNode.port.onmessage = (event) => {
-      if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(event.data);
+      if (event.data instanceof ArrayBuffer) {
+        frameCounter++;
+        if (frameCount) frameCount.textContent = frameCounter + " frames";
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(event.data);
+        }
+      } else if (event.data?.type === "level" && meterFill) {
+        meterFill.style.width = Math.round(event.data.value * 100) + "%";
       }
     };
 
     sourceNode.connect(workletNode);
-    setStatus("Listening. Keep this page open during the interview.");
+    setStatus("监听中 · 请保持页面打开");
     stopBtn.disabled = false;
   } catch (error) {
-    setStatus(error.message, true);
+    setStatus("错误: " + error.message, true);
     startBtn.disabled = false;
     stopBtn.disabled = true;
     stopListening();
@@ -158,10 +172,13 @@ function stopListening() {
   sourceNode = null;
   mediaStream = null;
   audioContext = null;
+  frameCounter = 0;
 
   startBtn.disabled = false;
   stopBtn.disabled = true;
-  setStatus("Stopped");
+  setStatus("已停止");
+  if (meterFill) meterFill.style.width = "0%";
+  if (frameCount) frameCount.textContent = "0 frames";
 }
 
 refreshBtn.addEventListener("click", () => {
