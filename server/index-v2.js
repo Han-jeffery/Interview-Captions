@@ -596,9 +596,19 @@ function selectRelevantProfile(profile, question) {
 // 检测文本是否为有效可读内容（排除二进制乱码）
 function isReadableText(text) {
   if (!text || text.length < 10) return false;
-  // 可打印字符 + 中文字符占比必须 > 90%
   const printable = (text.match(/[A-Za-z0-9一-鿿\s.,!?;:'"()\-_/&%+@#，。！？；：“”'（）【】《》、\n\r\t*\-–—]/g) || []).length;
   return printable / text.length >= 0.90;
+}
+
+// 检测资料是否包含实际内容（非模板空壳）
+function hasRealContent(text) {
+  if (!text || text.length < 200) return false;
+  // 排除仅包含模板引导语的资料
+  const templateOnly = /^(# Personal Interview Context\s*)(Add or import your real|Fill this file with)/m;
+  if (templateOnly.test(text)) return false;
+  // 必须包含实质关键词（中文名、公司、项目、经历等）
+  const hasFacts = /[一-鿿]{10,}|company|project|experience|university|college|years|管理|负责|参与|开发|做过|任职/mi;
+  return hasFacts.test(text);
 }
 
 function buildPrompt(question, material, context) {
@@ -610,7 +620,7 @@ function buildPrompt(question, material, context) {
     else rawProfile = readContextFile("profile.md");
   }
   const profile = selectRelevantProfile(rawProfile, question);
-  const hasMaterial = Boolean(material || rawProfile);
+  const hasMaterial = hasRealContent(rawProfile);
   const job = hasMaterial ? readContextFile("job.md") : "";
 
   return [
