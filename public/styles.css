@@ -211,7 +211,7 @@ h2 {
   padding: 10px 14px;
   border-bottom: 1px solid var(--line);
   color: var(--muted);
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -222,8 +222,8 @@ h2 {
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.55;
-  font-size: 15px;
+  line-height: 1.5;
+  font-size: 13px;
 }
 
 .answer {
@@ -233,6 +233,7 @@ h2 {
 .final-line {
   margin-bottom: 6px;
   padding: 6px 8px;
+  font-size: 13px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
   border-left: 3px solid transparent;
   border-radius: 4px;

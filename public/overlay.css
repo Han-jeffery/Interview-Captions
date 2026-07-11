@@ -259,8 +259,8 @@ select {
   overflow: auto;
   color: var(--text);
   font-family: inherit;
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
 }
