@@ -24,21 +24,16 @@
       .error { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 20px; }
       .info { background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.2); border-radius: 8px; padding: 12px; margin-top: 16px; font-size: 13px; color: var(--brand); }
       .hidden { display: none; }
-      .price { font-size: 20px; font-weight: 700; color: #ffd666; margin-bottom: 16px; }
     </style>
   </head>
   <body>
     <div class="card" id="activateCard">
       <h1>ITC-View</h1>
       <p>AI 实时面试助手 · 中英文双语字幕</p>
-      <div class="price">¥11.9 / 30天</div>
       <input type="text" id="codeInput" placeholder="输入激活码" maxlength="19" autocomplete="off" />
       <button id="activateBtn" onclick="doActivate()">激活使用</button>
       <div class="error" id="errorMsg"></div>
       <div class="info" id="statusInfo" style="display:none"></div>
-      <p style="margin-top:20px;font-size:12px;color:var(--muted)">
-        购买激活码请联系客服<br>激活后可在任意设备使用
-      </p>
     </div>
 
     <script>
